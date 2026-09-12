@@ -2,11 +2,13 @@ from pathlib import Path
 import sys
 import re
 from unittest.mock import patch
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from openflight_bench.config import BenchProfile, TX_MODES, make_config
 from openflight_bench.capture import BenchController
+from openflight_bench.cli import parse_value
 from openflight_bench.wire import inspect_bytes, read_dump
 
 
@@ -16,6 +18,21 @@ def test_default_profile_is_the_new_baseline():
     assert profile.packed_tx_backoff == 394758
     assert "profileCfg 0 60.0 7 3 38 394758 0 100 1 128 4000 0 0 24" in text
     assert "captureCfg 0 43 0 43 0 30 1" in text
+    assert "frameCfg 0 2 12 0 3 1 0" in text
+
+
+def test_frame_period_is_generated_and_settable():
+    profile = BenchProfile(frame_period_ms=5)
+    assert "frameCfg 0 2 12 0 5 1 0" in make_config(profile)
+    assert parse_value(BenchProfile(), "period", "5").frame_period_ms == 5
+    assert parse_value(BenchProfile(), "frame", "5").frame_period_ms == 5
+
+
+def test_frame_period_requires_whole_positive_milliseconds():
+    with pytest.raises(ValueError):
+        BenchProfile(frame_period_ms=0)
+    with pytest.raises(ValueError):
+        BenchProfile(frame_period_ms=2.5)
 
 
 def test_all_tx_variants_keep_three_chirp_indices():

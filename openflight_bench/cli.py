@@ -21,6 +21,7 @@ Profile commands
   set hpf 0 0                              set HPF1 and HPF2 together
   set window 0 43                          set retained start bin and count
   set frames 30                            set retained post-trigger frames
+  set period 3                             set frameCfg periodicity (ms)
   set tx all|off|tx0|tx1|tx2|tx02           select chirp TX masks
   set name my_profile                       name the next profile
   apply                                     send profile, restart RF, archive CFG
@@ -58,11 +59,19 @@ def print_profile(profile: BenchProfile, *, applied: bool):
         f"TXbackoff={profile.txbackoff} dB (0x{profile.packed_tx_backoff:06x}) "
         f"HPF1/2={profile.hpf1}/{profile.hpf2} "
         f"window={profile.start_bin}:{profile.start_bin + profile.bin_count} "
-        f"frames={profile.post_frames} loops={profile.loops}"
+        f"frames={profile.post_frames} period={profile.frame_period_ms}ms loops={profile.loops}"
     )
 
 
 def parse_value(current: BenchProfile, field: str, value: str) -> BenchProfile:
+    if field in {"period", "frame", "frameperiod", "frame_period", "frame_period_ms"}:
+        try:
+            parsed = float(value)
+        except ValueError as exc:
+            raise ValueError("period must be a whole number of milliseconds") from exc
+        if not parsed.is_integer():
+            raise ValueError("period must be a whole number of milliseconds")
+        return current.copy(frame_period_ms=int(parsed))
     if field == "tx":
         return current.copy(tx_mode=normalize_tx_mode(value))
     if field == "name":
@@ -73,7 +82,7 @@ def parse_value(current: BenchProfile, field: str, value: str) -> BenchProfile:
         except ValueError as exc:
             raise ValueError(f"{field} must be an integer") from exc
         return current.copy(**{field: parsed})
-    raise ValueError("set accepts rxgain, txbackoff, hpf1, hpf2, tx, or name")
+    raise ValueError("set accepts rxgain, txbackoff, hpf1, hpf2, period, tx, or name")
 
 
 def print_capture_result(result):
@@ -88,8 +97,8 @@ def run_sweep(controller: BenchController, field: str, values_text: str):
     values = [x.strip() for x in values_text.split(",") if x.strip()]
     if field == "tx":
         values = [normalize_tx_mode(x) for x in values]
-    if field not in {"rxgain", "txbackoff", "hpf1", "hpf2", "tx"} or not values:
-        raise ValueError("run field must be rxgain, txbackoff, hpf1, hpf2, or tx")
+    if field not in {"rxgain", "txbackoff", "hpf1", "hpf2", "period", "tx"} or not values:
+        raise ValueError("run field must be rxgain, txbackoff, hpf1, hpf2, period, or tx")
     for value in values:
         controller.profile = parse_value(controller.profile, field, value)
         controller.profile = controller.profile.copy(name=f"{field}_{value}")

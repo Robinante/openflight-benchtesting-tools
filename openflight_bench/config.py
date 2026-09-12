@@ -39,7 +39,8 @@ class BenchProfile:
     sample_rate_ksps: int = 4000
     slope_mhz_per_us: float = 100.0
     start_freq_ghz: float = 60.0
-    frame_period_ms: float = 3.0
+    # TI's frameCfg periodicity is expressed as a whole number of milliseconds.
+    frame_period_ms: int = 3
 
     def __post_init__(self):
         self.tx_mode = normalize_tx_mode(self.tx_mode)
@@ -57,6 +58,15 @@ class BenchProfile:
             raise ValueError("post_frames must be 1..63")
         if self.loops < 2 or self.loops > 32 or self.loops % 2:
             raise ValueError("loops must be an even value from 2 through 32")
+        if isinstance(self.frame_period_ms, bool):
+            raise ValueError("frame_period_ms must be a positive whole number of milliseconds")
+        try:
+            period = float(self.frame_period_ms)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("frame_period_ms must be a positive whole number of milliseconds") from exc
+        if not period.is_integer() or not 1 <= period <= 65535:
+            raise ValueError("frame_period_ms must be a whole number from 1 through 65535")
+        self.frame_period_ms = int(period)
 
     @property
     def tx_masks(self) -> tuple[int, int, int]:
@@ -117,7 +127,7 @@ def make_config(profile: BenchProfile, *, include_sensor_start: bool = True) -> 
         f"chirpCfg 0 0 0 0 0 0 0 {masks[0]}",
         f"chirpCfg 1 1 0 0 0 0 0 {masks[1]}",
         f"chirpCfg 2 2 0 0 0 0 0 {masks[2]}",
-        f"frameCfg 0 2 {profile.loops} 0 3 1 0",
+        f"frameCfg 0 2 {profile.loops} 0 {profile.frame_period_ms} 1 0",
         "captureFormat iq16",
         (
             f"captureCfg {profile.start_bin} {profile.bin_count} "

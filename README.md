@@ -15,7 +15,7 @@ openflight-bench --port COM7 --out-dir .\captures
 
 The default applied profile is 60.0 GHz, 128 samples at 4000 ksps, 3 TX, 12
 loops, RX gain 24 dB, TX backoff 6 dB, HPF1/HPF2 0/0, IQ16, fixed bins 0–42
-(about 0–2.01 m), 30 retained frames, stride 1. For 6 dB the generated packed backoff word is
+(about 0–2.01 m), 30 retained frames, stride 1, and a 3 ms frame period. For 6 dB the generated packed backoff word is
 `394758` / `0x060606`, not the human number `6`.
 
 ## Prompt examples
@@ -32,6 +32,9 @@ bench> set tx all
 bench> set rxgain 30
 bench> apply
 bench> raw rx30
+bench> set period 5
+bench> apply
+bench> stats
 bench> run rxgain 24,30,36,42
 bench> run txbackoff 0,6,12
 bench> run tx off,tx0,tx1,tx2,tx02,all
