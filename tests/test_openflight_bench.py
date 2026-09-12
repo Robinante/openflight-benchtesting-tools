@@ -1,0 +1,91 @@
+from pathlib import Path
+import sys
+import re
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).parents[1]))
+
+from openflight_bench.config import BenchProfile, TX_MODES, make_config
+from openflight_bench.capture import BenchController
+from openflight_bench.wire import inspect_bytes, read_dump
+
+
+def test_default_profile_is_the_new_baseline():
+    profile = BenchProfile()
+    text = make_config(profile)
+    assert profile.packed_tx_backoff == 394758
+    assert "profileCfg 0 60.0 7 3 38 394758 0 100 1 128 4000 0 0 24" in text
+    assert "captureCfg 0 43 0 43 0 30 1" in text
+
+
+def test_all_tx_variants_keep_three_chirp_indices():
+    expected = {
+        "all": (1, 2, 4), "off": (0, 0, 0), "tx0": (1, 0, 0),
+        "tx1": (0, 2, 0), "tx2": (0, 0, 4), "tx02": (1, 0, 4),
+    }
+    for mode, masks in expected.items():
+        text = make_config(BenchProfile(tx_mode=mode))
+        got = tuple(int(re.search(rf"^chirpCfg {i} .* (\d+)$", text, re.MULTILINE).group(1)) for i in range(3))
+        assert got == masks
+
+
+def test_supplied_dumps_are_gated_by_length():
+    paths = sorted(Path(__file__).parents[1].joinpath("upload").glob("raw_couch_rxgain_sweep_1_*.l3dump"))
+    statuses = [inspect_bytes(path.read_bytes())["status"] for path in paths]
+    assert statuses == ["reject", "reject", "reject", "complete", "complete"]
+
+
+class FakeSerial:
+    def __init__(self, data, *, port=None, baudrate=None):
+        self.data = bytearray(data)
+        self.writes = []
+        self.port = port
+        self.baudrate = baudrate
+
+    @property
+    def in_waiting(self):
+        return len(self.data)
+
+    def read(self, count=1):
+        if not self.data:
+            return b""
+        count = min(count, len(self.data))
+        result = bytes(self.data[:count])
+        del self.data[:count]
+        return result
+
+    def write_line(self, line):
+        self.writes.append(line)
+
+    def close(self):
+        pass
+
+
+def test_reader_strips_completion_text_and_rejects_short_payload():
+    path = Path(__file__).parents[1] / "upload/raw_couch_rxgain_sweep_1_20260910_200150_r4_g0004.l3dump"
+    raw = path.read_bytes()
+    complete = read_dump(FakeSerial(raw + b"Done\nl3dump:/>"), timeout=.2, stall_timeout=.01)
+    assert complete["status"] == "complete"
+    assert complete["raw"] == raw
+
+    short = raw[:-1024]
+    rejected = read_dump(FakeSerial(short + b"Done\nl3dump:/>"), timeout=.2, stall_timeout=.01)
+    assert rejected["status"] == "rejected_short"
+    assert rejected["actual_bytes"] == len(short)
+
+    extra = read_dump(FakeSerial(raw + b"XXDone\nl3dump:/>"), timeout=.2, stall_timeout=.01)
+    assert extra["status"] == "rejected_extra"
+    assert extra["extra_bytes"] == 2
+
+
+def test_capture_triggers_firmware_dump_before_reading(tmp_path):
+    source = Path(__file__).parents[1] / "upload/raw_couch_rxgain_sweep_1_20260910_200150_r4_g0004.l3dump"
+    fake = FakeSerial(source.read_bytes() + b"Done\nl3dump:/>")
+    with patch("openflight_bench.capture.BenchSerial", return_value=fake), \
+         patch.object(BenchController, "drain_text", return_value=""):
+        controller = BenchController("COM7", tmp_path, timeout=.2)
+        controller.applied = True
+        result = controller.capture("trigger_test")
+        controller.close()
+    assert result["accepted_for_analysis"]
+    assert fake.writes[0] == "l3dump"

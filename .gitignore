@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Generated bench captures
+captures/
+*.l3dump
+*.l3dump.partial
+*.rejected.l3dump
+
+# Generated audit artifacts
+*.zip
+*.png
+*results.json
+
+# Local files
+.vscode/
+.idea/
+.env
+.DS_Store
+Thumbs.db
