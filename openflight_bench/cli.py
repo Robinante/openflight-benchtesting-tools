@@ -20,8 +20,8 @@ Profile commands
   set hpf2 0|1|2|3                          set HPF2 corner code
   set hpf 0 0                              set HPF1 and HPF2 together
   set window 0 43                          set retained start bin and count
-  set frames 30                            set retained post-trigger frames
-  set period 3                             set frameCfg periodicity (ms)
+  set frames 5                             set retained post-trigger frames
+  set period 10                            set frameCfg periodicity (ms)
   set tx all|off|tx0|tx1|tx2|tx02           select chirp TX masks
   set name my_profile                       name the next profile
   apply                                     send profile, restart RF, archive CFG
@@ -128,7 +128,14 @@ def main(argv=None):
     print_profile(controller.profile, applied=False)
     try:
         if not args.no_apply:
-            print("Applying default profile (RX24 / TX backoff 6 / HPF 0,0 / all TX)...")
+            print(
+                "Applying default profile "
+                f"(RX{controller.profile.rxgain} / "
+                f"TX backoff {controller.profile.txbackoff} / "
+                f"HPF {controller.profile.hpf1},{controller.profile.hpf2} / "
+                f"{controller.profile.post_frames} post frames / "
+                f"{controller.profile.frame_period_ms} ms)..."
+            )
             # Stop/flush is harmless on an idle board and makes a rerun safe if
             # the previous terminal session left the sensor running.
             response = controller.send_config(controller.profile, first=False)

@@ -14,6 +14,11 @@ TX_MODES = {
     "tx02": (1, 0, 4),
 }
 
+# The configurable OpenFlight firmware currently waits 250 SYS/BIOS ticks for
+# the post-trigger HWA freeze. Bench testing on 2026-09-14 demonstrated that a
+# 30-frame, 10 ms plan times out, while 5 frames at 10 ms completes cleanly.
+FIRMWARE_FREEZE_TIMEOUT_MS = 250
+
 
 @dataclass
 class BenchProfile:
@@ -24,7 +29,7 @@ class BenchProfile:
     expect the human number 6 as that field's decimal value.
     """
 
-    name: str = "baseline_rx24_tx6_hpf00"
+    name: str = "baseline_rx24_tx6_hpf00_p10_f5"
     tx_mode: str = "all"
     rxgain: int = 24
     txbackoff: int = 6
@@ -32,7 +37,7 @@ class BenchProfile:
     hpf2: int = 0
     start_bin: int = 0
     bin_count: int = 43
-    post_frames: int = 30
+    post_frames: int = 5
     post_stride: int = 1
     loops: int = 12
     num_adc_samples: int = 128
@@ -40,7 +45,7 @@ class BenchProfile:
     slope_mhz_per_us: float = 100.0
     start_freq_ghz: float = 60.0
     # TI's frameCfg periodicity is expressed as a whole number of milliseconds.
-    frame_period_ms: int = 3
+    frame_period_ms: int = 10
 
     def __post_init__(self):
         self.tx_mode = normalize_tx_mode(self.tx_mode)
@@ -67,6 +72,14 @@ class BenchProfile:
         if not period.is_integer() or not 1 <= period <= 65535:
             raise ValueError("frame_period_ms must be a whole number from 1 through 65535")
         self.frame_period_ms = int(period)
+        post_duration_ms = self.post_frames * self.post_stride * self.frame_period_ms
+        if post_duration_ms >= FIRMWARE_FREEZE_TIMEOUT_MS:
+            raise ValueError(
+                "post-trigger duration must be under 250 ms for the current "
+                "firmware freeze timeout "
+                f"({self.post_frames} frames x stride {self.post_stride} x "
+                f"{self.frame_period_ms} ms = {post_duration_ms} ms)"
+            )
 
     @property
     def tx_masks(self) -> tuple[int, int, int]:
