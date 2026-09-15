@@ -15,8 +15,15 @@ openflight-bench --port COM7 --out-dir .\captures
 
 The default applied profile is 60.0 GHz, 128 samples at 4000 ksps, 3 TX, 12
 loops, RX gain 24 dB, TX backoff 6 dB, HPF1/HPF2 0/0, IQ16, fixed bins 0–42
-(about 0–2.01 m), 30 retained frames, stride 1. For 6 dB the generated packed backoff word is
+(about 0–2.01 m), 5 retained post-trigger frames, stride 1, and a 10 ms frame
+period. The 786432-byte L3 allocation holds 26 pre-trigger frames plus 5
+post-trigger frames for a 767808-byte payload. For 6 dB the generated packed backoff word is
 `394758` / `0x060606`, not the human number `6`.
+
+The current configurable firmware uses a fixed 250-tick HWA freeze wait. The
+CLI rejects profiles whose requested post-trigger duration reaches 250 ms;
+`30 frames x 10 ms` was verified to time out, while the default `5 x 10 ms`
+profile completed without HWA misses.
 
 ## Prompt examples
 
@@ -32,6 +39,9 @@ bench> set tx all
 bench> set rxgain 30
 bench> apply
 bench> raw rx30
+bench> set period 5
+bench> apply
+bench> stats
 bench> run rxgain 24,30,36,42
 bench> run txbackoff 0,6,12
 bench> run tx off,tx0,tx1,tx2,tx02,all
