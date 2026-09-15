@@ -91,7 +91,7 @@ not establish transport reliability.
 ## Save the code checkpoint after validation
 
 ```powershell
-git add openflight_bench/wire.py openflight_bench/capture.py tests/test_uart_reader.py UART_READER_FIX.md
+git add openflight_bench/wire.py openflight_bench/capture.py tests/test_uart_reader.py docs/UART_READER_FIX.md
 git commit -m "Fix UART footer parsing and preserve receive diagnostics"
 git push
 ```
