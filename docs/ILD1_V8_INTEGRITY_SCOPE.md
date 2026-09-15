@@ -1,8 +1,8 @@
 # ILD1 End-to-End Integrity Extension Scope
 
-**Status:** Backlog; ready for implementation planning  
-**Proposed contract:** ILD1 version 8  
-**Primary objective:** Make every accepted IWR6843 dump independently verifiable from frozen L3 memory through host parsing and file persistence.  
+**Status:** Backlog; ready for implementation planning
+**Proposed contract:** ILD1 version 8
+**Primary objective:** Make every accepted IWR6843 dump independently verifiable from frozen L3 memory through host parsing and file persistence.
 **Target repositories:** OpenFlight and `openflight-benchtesting-tools`
 
 > Before implementation, inspect the current OpenFlight `main` branch. If version 8 has already been assigned, use the next unused ILD1 version while preserving the design below.
@@ -339,4 +339,3 @@ This would identify duplicated slots, stale frames, unexpected gaps, and orderin
 - [ ] Run Pi and Windows hardware acceptance matrices.
 - [ ] Update firmware documentation and release SHA-256.
 - [ ] Decide separately whether per-frame acquisition sequence data is warranted.
-

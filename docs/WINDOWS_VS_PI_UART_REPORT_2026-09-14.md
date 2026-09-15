@@ -1,10 +1,10 @@
 # Windows vs. Raspberry Pi IWR6843 UART Capture Investigation
 
-**Investigation dates:** 2026-09-10 through 2026-09-14  
-**Report date:** 2026-09-15  
-**Radar:** TI IWR6843LEVM  
-**USB-UART bridge:** Silicon Labs CP2105 Dual UART Bridge, Enhanced interface  
-**Wire rate:** 1,041,667 baud, 8N1, no flow control  
+**Investigation dates:** 2026-09-10 through 2026-09-14
+**Report date:** 2026-09-15
+**Radar:** TI IWR6843LEVM
+**USB-UART bridge:** Silicon Labs CP2105 Dual UART Bridge, Enhanced interface
+**Wire rate:** 1,041,667 baud, 8N1, no flow control
 **Result:** Raspberry Pi selected as the supported bench-capture host; Windows captures remain diagnostic-only.
 
 ## 1. Executive Conclusion
@@ -388,8 +388,7 @@ This is strong engineering evidence, but the cleanest end-to-end proof would add
 
 ## 13. Final Disposition
 
-**Windows:** unsuitable for analysis-ready IWR6843 captures under the tested configuration. Useful for reproducing and diagnosing the host transport defect.  
-**Raspberry Pi:** validated for ongoing bench, material, and enclosure testing.  
-**Data integrity:** no detectable corruption in the 23 full Pi captures; verifiable by strict structure, length, and host hashes, with firmware CRC reserved as a future improvement.  
+**Windows:** unsuitable for analysis-ready IWR6843 captures under the tested configuration. Useful for reproducing and diagnosing the host transport defect.
+**Raspberry Pi:** validated for ongoing bench, material, and enclosure testing.
+**Data integrity:** no detectable corruption in the 23 full Pi captures; verifiable by strict structure, length, and host hashes, with firmware CRC reserved as a future improvement.
 **Preferred profile:** RX24 / TX backoff 6 / HPF 0,0 / all TX / 12 loops / bins 0-42 / 10 ms / 5 post.
-
