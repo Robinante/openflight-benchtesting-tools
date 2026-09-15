@@ -11,6 +11,24 @@ HEADER = struct.Struct("<4sHHHBBHBBHH")
 TEMP = struct.Struct("<I10h")
 DESC = struct.Struct("<BBH")
 MAGIC = b"ILD1"
+COMPLETIONS = (b"Done\r\nl3dump:/>", b"Done\nl3dump:/>")
+
+
+class RecordingSerial:
+    """Keep exactly the bytes returned to this reader, including CLI text."""
+
+    def __init__(self, serial_port):
+        self.serial_port = serial_port
+        self.received = bytearray()
+
+    @property
+    def in_waiting(self):
+        return getattr(self.serial_port, "in_waiting", 0)
+
+    def read(self, count=1):
+        chunk = self.serial_port.read(count)
+        self.received.extend(chunk)
+        return chunk
 
 
 @dataclass
@@ -74,13 +92,18 @@ def read_exact(serial_port, count: int, *, timeout: float, label: str) -> bytes:
 
 
 def read_dump(serial_port, *, timeout: float = 45.0, stall_timeout: float = 5.0):
-    """Read one dump into memory and reject short transfers.
+    """Read a dump and retain an unmodified record of the received UART bytes."""
+    recorded = RecordingSerial(serial_port)
+    try:
+        result = _read_dump(recorded, timeout=timeout, stall_timeout=stall_timeout)
+    except Exception as exc:
+        exc.wire_bytes = bytes(recorded.received)
+        raise
+    result["wire_bytes"] = bytes(recorded.received)
+    return result
 
-    The returned dict contains the plan, raw bytes, and a status. The old
-    capture script treated a short payload as a usable final-frame capture;
-    this reader never does that. If the firmware returns to the CLI early,
-    bytes after the payload are recognized as completion text and excluded.
-    """
+
+def _read_dump(serial_port, *, timeout: float, stall_timeout: float):
     magic = read_until_magic(serial_port, timeout=timeout)
     header = magic + read_exact(serial_port, HEADER.size - len(magic), timeout=timeout, label="header")
     _magic, version, nf, _cpf, _ntx, _nrx, _ns, fmt, _pad, _trig, _period = HEADER.unpack(header)
@@ -89,86 +112,45 @@ def read_dump(serial_port, *, timeout: float = 45.0, stall_timeout: float = 5.0)
     metadata = read_exact(serial_port, metadata_len, timeout=timeout, label="metadata")
     plan = parse_plan(header, extension, metadata)
 
-    payload = bytearray()
+    body = bytearray()
     started = time.monotonic()
     last_data = started
-    trailing = bytearray()
-    # Keep a small overlap so the ASCII completion marker is recognized even
-    # when the USB serial driver splits it across two reads.
-    probe = bytearray()
-    while len(payload) < plan.expected_payload_bytes:
-        now = time.monotonic()
-        if now - started > timeout:
-            break
+    # Accumulate across read boundaries. A four-byte "Done" occurrence alone
+    # is never a delimiter. Wait for a quiet tail before recognizing the full
+    # Done + prompt suffix, so a marker within continuing IQ data is retained.
+    while time.monotonic() - started < timeout:
         waiting = getattr(serial_port, "in_waiting", 0)
-        chunk = serial_port.read(min(plan.expected_payload_bytes - len(payload), waiting or 1))
+        chunk = serial_port.read(min(waiting or 1, 65536))
         if chunk:
-            previous_probe = bytes(probe)
-            marker_in_chunk = chunk.find(b"Done")
-            if marker_in_chunk < 0:
-                combined_probe = previous_probe + chunk
-                marker = combined_probe.find(b"Done")
-                if marker >= len(previous_probe):
-                    marker_in_chunk = marker - len(previous_probe)
-            if marker_in_chunk >= 0:
-                # The firmware's post-dump text is "Done\\nl3dump:/>". A
-                # random four-byte occurrence in IQ data is extraordinarily
-                # unlikely, and requiring the prompt makes the guard safer.
-                after = chunk[marker_in_chunk:]
-                if b"l3dump:" in after or after == b"Done":
-                    payload.extend(chunk[:marker_in_chunk])
-                    trailing.extend(chunk[marker_in_chunk:])
-                    break
-            probe.extend(chunk)
-            if len(probe) > 96:
-                del probe[:-96]
-            payload.extend(chunk)
-            last_data = now
+            body.extend(chunk)
+            last_data = time.monotonic()
             continue
-        if payload and now - last_data >= stall_timeout:
-            # The normal firmware completion text is emitted only after the
-            # binary stream. Read a bounded tail, then stop if it is present.
-            tail = serial_port.read(128)
-            trailing.extend(tail)
-            if b"Done" in trailing:
+        idle = time.monotonic() - last_data
+        if any(body.endswith(marker) for marker in COMPLETIONS):
+            if idle >= min(0.15, stall_timeout):
                 break
-            last_data = now
-        elif not payload and now - started >= stall_timeout:
+        elif len(body) >= plan.expected_payload_bytes:
+            if idle >= min(0.30, stall_timeout):
+                break
+        if idle >= stall_timeout:
             break
 
-    extra_payload = bytearray()
-    if len(payload) == plan.expected_payload_bytes:
-        # A normal completion is ASCII `Done\nl3dump:/>`. Consume a short
-        # postamble so an overlong transfer cannot remain in the UART and
-        # corrupt the next command. Bytes before Done that are not ordinary
-        # line whitespace are extra binary payload and make this capture fail.
-        post = bytearray()
-        deadline = time.monotonic() + 0.30
-        while time.monotonic() < deadline and b"Done" not in post:
-            waiting = getattr(serial_port, "in_waiting", 0)
-            if waiting:
-                post.extend(serial_port.read(min(waiting, 256 - len(post))))
-            else:
-                time.sleep(0.01)
-        marker = bytes(post).find(b"Done")
-        if marker >= 0:
-            prefix = bytes(post[:marker])
-            if any(byte not in (9, 10, 13, 32) for byte in prefix):
-                extra_payload.extend(prefix)
-                status = "rejected_extra"
-            else:
-                status = "complete"
-            trailing.extend(post[marker:])
-        elif post:
-            # Preserve unexpected postamble bytes for diagnosis instead of
-            # letting them leak into the next capture.
-            extra_payload.extend(post)
-            status = "rejected_extra"
-        else:
-            status = "complete"
-    else:
-        status = "rejected_short"
-    raw = header + extension + metadata + bytes(payload) + bytes(extra_payload)
+    trailing = b""
+    payload = bytes(body)
+    for marker in COMPLETIONS:
+        if payload.endswith(marker):
+            payload, trailing = payload[:-len(marker)], marker
+            break
+    # Preserve the previous allowance for CLI line whitespace after an exact
+    # binary payload. Never trim whitespace within the advertised payload.
+    extra = payload[plan.expected_payload_bytes:]
+    if trailing and extra and all(byte in (9, 10, 13, 32) for byte in extra):
+        trailing = extra + trailing
+        payload = payload[:plan.expected_payload_bytes]
+    short_by = max(0, plan.expected_payload_bytes - len(payload))
+    extra_bytes = max(0, len(payload) - plan.expected_payload_bytes)
+    status = "rejected_short" if short_by else "rejected_extra" if extra_bytes else "complete"
+    raw = header + extension + metadata + payload
     return {
         "status": status,
         "raw": raw,
@@ -178,10 +160,11 @@ def read_dump(serial_port, *, timeout: float = 45.0, stall_timeout: float = 5.0)
         "plan": plan,
         "actual_bytes": len(raw),
         "expected_bytes": HEADER.size + len(extension) + len(metadata) + plan.expected_payload_bytes,
-        "short_by": max(0, plan.expected_payload_bytes - len(payload)),
-        "extra_bytes": len(extra_payload),
+        "short_by": short_by,
+        "extra_bytes": extra_bytes,
         "sha256": hashlib.sha256(raw).hexdigest(),
-        "trailing_text": bytes(trailing).decode("ascii", errors="replace"),
+        "trailing_text": trailing.decode("ascii", errors="replace"),
+        "completion_seen": bool(trailing),
     }
 
 
@@ -193,10 +176,17 @@ def read_until_magic(serial_port, *, timeout: float) -> bytes:
         if not byte:
             continue
         window.extend(byte)
-        del window[:-4]
-        if bytes(window) == MAGIC:
+        if window.endswith(MAGIC):
             return MAGIC
-    raise TimeoutError("timed out waiting for ILD1 magic")
+        if window.endswith(b"l3dump:/>"):
+            response = bytes(window).decode("ascii", errors="replace").strip()
+            raise RuntimeError(f"firmware returned without ILD1: {response}")
+        # The recorder retains the full stream; only the error preview is bounded.
+        if len(window) > 4096:
+            del window[:-4096]
+    response = bytes(window).decode("ascii", errors="replace").strip()
+    detail = f"; received: {response}" if response else "; no UART bytes received"
+    raise TimeoutError("timed out waiting for ILD1 magic" + detail)
 
 
 def inspect_bytes(raw: bytes) -> dict:

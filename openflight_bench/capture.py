@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
+import hashlib
 from pathlib import Path
 import re
 import time
@@ -134,7 +135,36 @@ class BenchController:
         # because that method drains the port as text and could consume the
         # beginning of the ILD1 stream before read_dump() sees it.
         self.serial.write_line("l3dump")
-        result = read_dump(self.serial, timeout=self.timeout)
+        wire_path = self.out_dir / f"{stem}.wire.bin"
+        try:
+            result = read_dump(self.serial, timeout=self.timeout)
+        except Exception as exc:
+            wire_bytes = getattr(exc, "wire_bytes", b"")
+            wire_path.write_bytes(wire_bytes)
+            failed_path = self.out_dir / f"{stem}.json"
+            failed = {
+                "schema": "openflight_bench.capture.v1",
+                "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "port": self.port, "baud": self.baud,
+                "label": label, "test_type": kind,
+                "profile": self.profile.as_dict(),
+                "capture_info": {"status": "failed_before_payload_validation"},
+                "error": str(exc),
+                "wire_file": wire_path.name,
+                "wire_bytes": len(wire_bytes),
+                "wire_sha256": hashlib.sha256(wire_bytes).hexdigest(),
+                "accepted_for_analysis": False,
+            }
+            failed_path.write_text(json.dumps(failed, indent=2) + "\n", encoding="utf-8")
+            self.manifest["captures"].append({
+                "file": None, "sidecar": failed_path.name,
+                "wire_file": wire_path.name, "status": "failed_before_payload_validation",
+                "profile": self.profile.as_dict(),
+            })
+            self._write_manifest()
+            raise RuntimeError(f"{exc}; UART record saved: {wire_path.name}") from exc
+        wire_bytes = result["wire_bytes"]
+        wire_path.write_bytes(wire_bytes)
         plan = result["plan"]
         status = result["status"]
         suffix = ".l3dump" if status == "complete" else ".rejected.l3dump"
@@ -169,6 +199,7 @@ class BenchController:
             "status": status,
         }
         info["stats"] = stats
+        info["completion_seen"] = result["completion_seen"]
         timestamp = datetime.now(timezone.utc).isoformat()
         sidecar = {
             "schema": "openflight_bench.capture.v1",
@@ -189,6 +220,10 @@ class BenchController:
             "capture_info": info,
             "stats": stats,
             "file_sha256": result["sha256"],
+            "wire_file": wire_path.name,
+            "wire_bytes": len(wire_bytes),
+            "wire_sha256": hashlib.sha256(wire_bytes).hexdigest(),
+            "trailing_text": result["trailing_text"],
             "accepted_for_analysis": status == "complete",
         }
         sidecar_path = self.out_dir / f"{stem}.json"
