@@ -30,8 +30,11 @@ Capture commands
   raw label                                 one raw capture
   baseline label                            capture with test_type=material, kind=baseline
   material swatch_name                     capture with test_type=material
+                                            (baseline/material ask for an angle:
+                                            Enter alone = boresight, 0 deg)
   sweep azimuth|elevation angle label      capture with test_type=sweep
   repeat N raw label                        take N captures
+  repeat N baseline|material label          N captures, one angle prompt for the batch
   run rxgain 24,30,36                       apply/capture one repeat per value
   run txbackoff 0,6,12                      apply/capture one repeat per value
   run hpf1 0,1,2,3                          apply/capture one repeat per value
@@ -83,6 +86,37 @@ def parse_value(current: BenchProfile, field: str, value: str) -> BenchProfile:
             raise ValueError(f"{field} must be an integer") from exc
         return current.copy(**{field: parsed})
     raise ValueError("set accepts rxgain, txbackoff, hpf1, hpf2, period, tx, or name")
+
+
+def prompt_angle_axis(input_fn=input):
+    """Ask where a baseline/material capture was taken; return (angle_deg, axis).
+
+    Enter alone (or 0) means boresight: (0.0, "boresight"), the same value the
+    original capture_benchtesting.py logged. The analysis loader skips any
+    sidecar whose angle_deg or axis is missing, and it groups a swatch only
+    with baselines taken at the same angle, so material/baseline captures must
+    always carry both fields. An unparseable answer is asked again rather than
+    silently logged as boresight.
+    """
+    while True:
+        raw = input_fn("  angle deg (blank = boresight 0)> ").strip()
+        if not raw:
+            return 0.0, "boresight"
+        try:
+            angle = float(raw)
+        except ValueError:
+            print(f"  !! Didn't understand angle '{raw}'. Enter a number, or press Enter for boresight.")
+            continue
+        if angle == 0.0:
+            return 0.0, "boresight"
+        break
+    while True:
+        axis_raw = input_fn("  axis (azimuth/elevation)> ").strip().lower()
+        if axis_raw in ("az", "azimuth"):
+            return angle, "azimuth"
+        if axis_raw in ("el", "elevation"):
+            return angle, "elevation"
+        print(f"  !! Didn't understand axis '{axis_raw}'. Type az or el.")
 
 
 def print_capture_result(result):
@@ -182,7 +216,8 @@ def main(argv=None):
                 elif command in {"raw", "baseline", "material"} and len(parts) >= 2:
                     kind = "material" if command in {"baseline", "material"} else "raw"
                     label = "_".join(parts[1:])
-                    result = controller.capture(label, kind=kind, swatch=(label if command == "material" else None), material_kind=(command if command in {"baseline", "material"} else None))
+                    angle_deg, axis = prompt_angle_axis() if kind == "material" else (None, None)
+                    result = controller.capture(label, kind=kind, swatch=(label if command == "material" else None), material_kind=(command if command in {"baseline", "material"} else None), angle_deg=angle_deg, axis=axis)
                     print_capture_result(result)
                 elif command == "sweep" and len(parts) >= 4:
                     axis = parts[1].lower()
@@ -196,8 +231,9 @@ def main(argv=None):
                     label = "_".join(parts[3:])
                     if count < 1 or mode not in {"raw", "baseline", "material"}:
                         raise ValueError("repeat syntax: repeat N raw|baseline|material label")
+                    angle_deg, axis = prompt_angle_axis() if mode != "raw" else (None, None)
                     for index in range(count):
-                        result = controller.capture(f"{label}_r{index + 1}", kind=("material" if mode != "raw" else "raw"), material_kind=(mode if mode != "raw" else None), swatch=(label if mode == "material" else None))
+                        result = controller.capture(f"{label}_r{index + 1}", kind=("material" if mode != "raw" else "raw"), material_kind=(mode if mode != "raw" else None), swatch=(label if mode == "material" else None), angle_deg=angle_deg, axis=axis)
                         print_capture_result(result)
                 elif command == "run" and len(parts) == 3:
                     run_sweep(controller, parts[1].lower(), parts[2])
