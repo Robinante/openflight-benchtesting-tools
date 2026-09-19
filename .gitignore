@@ -25,3 +25,4 @@ captures/
 .env
 .DS_Store
 Thumbs.db
+!**/tests/fixtures/**/*.l3dump

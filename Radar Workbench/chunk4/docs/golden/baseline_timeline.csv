@@ -1,0 +1,7 @@
+timestamp,file,axis,angle_deg,range_m,power_db_mean_all_elements,snr_db,excluded_from_pooling
+2026-09-06T21:59:01.865862,material_baseline_20260906_215848_r1_g0001.l3dump,boresight,0.0,1.4053,76.34,-1.39,False
+2026-09-06T21:59:15.442415,material_baseline_20260906_215901_r2_g0002.l3dump,boresight,0.0,0.0468,76.68,-0.98,False
+2026-09-06T21:59:29.009407,material_baseline_20260906_215915_r3_g0003.l3dump,boresight,0.0,0.9369,79.05,1.24,False
+2026-09-06T22:29:19.482479,material_baseline_20260906_222905_r1_g0067.l3dump,boresight,0.0,1.6863,79.99,3.36,False
+2026-09-06T22:29:33.050546,material_baseline_20260906_222919_r2_g0068.l3dump,boresight,0.0,1.78,87.16,13.43,False
+2026-09-06T22:29:46.636964,material_baseline_20260906_222933_r3_g0069.l3dump,boresight,0.0,1.7332,81.91,4.52,False
