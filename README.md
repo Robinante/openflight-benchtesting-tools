@@ -226,3 +226,107 @@ experiments. It is intentionally separate from the OpenFlight application
 repository. Generated captures and local scratch artifacts remain outside Git;
 commit only reusable tools, reproducible tests, profiles, reports, and design
 notes.
+
+---
+
+## Analysis layer (refactored -- Chunks 1-3)
+
+The analysis code that used to live in `analyze_material.py` and
+`analyze_sweep.py` now lives in the `openflight_bench/analysis/` package. **The two scripts
+still work exactly as before** -- same flags, same CSV columns, same numbers:
+
+```
+python3 analyze_material.py captures\material_session1 --element-csv ... --summary-csv ...
+python3 analyze_sweep.py    captures\my_sweep_session  --element-csv ... --summary-csv ...
+```
+
+They are now thin wrappers. The same analyses are also callable directly:
+
+```python
+from pathlib import Path
+from openflight_bench.analysis import MaterialOptions, analyze_material, SweepOptions, analyze_sweep
+
+result = analyze_material(MaterialOptions(capture_dir=Path("captures/mat_session")))
+result.element_rows, result.summary_rows, result.baseline_timeline_rows   # list[dict]
+# -> MaterialComparisonResult
+
+result = analyze_sweep(SweepOptions(capture_dir=Path("captures/sweep_session")))
+result.element_rows, result.summary_rows                                  # -> SweepResult
+```
+
+Nothing is written to disk unless you call `openflight_bench.analysis.write_rows` yourself.
+
+The analysis lives inside `openflight_bench` so there is one import root, but
+`import openflight_bench` stays numpy-free -- the capture CLI is unaffected and
+analysis is opt-in via `import openflight_bench.analysis`.
+
+Regression tests comparing the new code against frozen copies of the old scripts:
+
+```
+python3 -m pytest tests/test_analysis_regression.py -q
+```
+
+The capture fixtures are not bundled -- see `tests/FIXTURES.md` for pointing the
+tests at your own capture directories.
+
+```
+```
+
+Captures are parsed into a normalized `Capture` (source / metadata /
+configuration / frames / channels / timestamps / integrity), and every analysis
+returns an `AnalysisResult` with a uniform `.tables` mapping:
+
+```python
+from openflight_bench.analysis import load_capture, analyze_capture, write_rows
+
+cap = load_capture("captures/mat/foo.l3dump")
+print(cap)                       # foo.l3dump [range-FFT IQ16 ...] 3TX x 4RX, complete (31 frames)
+print(cap.configuration.range_bin_m, cap.configuration.range_bin_source)
+print(cap.integrity.describe())
+
+a = analyze_capture(cap)         # -> CaptureAnalysis
+a.peak_bin, a.peak_range_m, a.snr_db, a.profile_db, a.range_axis_m
+
+for name, rows in result.tables.items():      # works for any analysis
+    write_rows(f"{name}.csv", rows)
+```
+
+**One behavior change in Chunk 2:** `range_bin_m` now prefers the value the
+capture tool recorded in the sidecar over one re-derived from the chirp flags.
+Every current session records the same number the flags derive, so output is
+unchanged; when they disagree the run says so. `--range-bin-m` still overrides
+everything. See `docs/CHUNK2_NOTES.md` §2.
+
+### Workbench
+
+```
+pip install streamlit matplotlib
+streamlit run workbench/app.py
+```
+
+Session / Analyze / Compare / Material / Sweep over saved captures. See
+`workbench/README.md`.
+
+### Integrity
+
+`load_capture` hashes the dump and checks it against `file_sha256` in the
+sidecar or the folder's `SHA256SUMS`:
+
+```python
+cap.integrity.sha256_verified     # True / False / None (None = none recorded)
+cap.integrity.usable              # not rejected by the capture tool, not corrupt
+verify_directory("captures/my_session")   # same answer as sha256sum -c
+```
+
+### Progress and JSON
+
+```python
+from openflight_bench.analysis import CollectingProgress, write_json
+pg = CollectingProgress()
+result = analyze_material(opts, progress=pg)   # nothing reaches stdout
+write_json("result.json", result)              # tables + provenance
+```
+
+See `docs/CHUNK3_NOTES.md`, and `docs/CHUNK1_NOTES.md` -- in particular the note about the missing
+`analyzer_validation.py`, which `analyze_material.py` imported but which is not
+in this repository.
