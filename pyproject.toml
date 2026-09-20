@@ -5,9 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openflight-bench"
 version = "0.1.0"
-description = "Interactive IWR6843 bench capture and profile-control tools for OpenFlight"
+description = "OpenFlight Radar Workbench: IWR6843 capture, analysis, and visualization"
 requires-python = ">=3.10"
 dependencies = ["pyserial>=3.5"]
+
+[project.optional-dependencies]
+analysis = ["numpy", "matplotlib"]
+workbench = ["numpy", "matplotlib", "streamlit"]
+dev = ["pytest"]
 
 [project.scripts]
 openflight-bench = "openflight_bench.cli:main"

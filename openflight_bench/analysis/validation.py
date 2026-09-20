@@ -23,7 +23,7 @@ identical to what it would have done:
                               into a printed message and exit code 2
 
 If the real module enforced stricter validation, THAT STRICTNESS IS NOT
-REPRODUCED HERE. See docs/CHUNK1_NOTES.md, open question 1.
+REPRODUCED HERE. See docs/history/CHUNK1_NOTES.md, open question 1.
 """
 
 from __future__ import annotations

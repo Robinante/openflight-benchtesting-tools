@@ -75,7 +75,7 @@ snr_db = peak_to_floor_db + coherent_gain_db + (noise_floor_db - noise_db)
 -1.386 =        8.050     +     (-8.507)     +   (76.918 - 77.847)
 ```
 
-`tests/test_chunk4_rawfirst.py::test_legacy_snr_identity_holds_on_real_data`
+`tests/test_range_profiles.py::test_legacy_snr_identity_holds_on_real_data`
 asserts this to 1e-6 on a real capture, and
 `test_legacy_snr_is_a_mixed_estimator_and_is_labelled_so` reproduces it on
 synthetic data where every term is known exactly (honest 20 dB, coherent gain

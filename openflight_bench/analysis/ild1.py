@@ -3,7 +3,7 @@
 Every definition here is copied verbatim from analyze_sweep.py, which was the
 validated copy. analyze_material.py carried a byte-identical duplicate of the
 constants and imported the parsing from a module (analyzer_validation) that is
-missing from the repository -- see docs/CHUNK1_NOTES.md.
+missing from the repository -- see docs/history/CHUNK1_NOTES.md.
 """
 
 from __future__ import annotations

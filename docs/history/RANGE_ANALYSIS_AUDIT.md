@@ -1,5 +1,7 @@
 # Range-bin selection and gating audit (Chunk 3 code, pre-Chunk-4)
 
+> Historical snapshot. For current setup and layout, see the [repository README](../../README.md).
+
 Traced every place a range bin is chosen, and what downstream depends on it.
 
 ## 1. Where bins are selected

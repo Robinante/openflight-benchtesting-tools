@@ -10,7 +10,7 @@ The calibration/angle-gating helpers below are copied unchanged from
 analyze_material.py. The original imported its parsing and validation helpers
 from ``analyzer_validation``, a module missing from the repository; those now
 come from openflight_bench.analysis.ild1 / .loaders / .validation. See
-docs/CHUNK1_NOTES.md.
+docs/history/CHUNK1_NOTES.md.
 """
 
 from __future__ import annotations

@@ -1,5 +1,7 @@
 # Previous audit -- recovered status
 
+> Historical snapshot. For current setup and layout, see the [repository README](../../README.md).
+
 The prior session started a seven-item audit of the Chunk 3 deliverable and ran
 out of budget partway. This records only what is recoverable from existing
 evidence (the Chunk 3 archive, its docs, and re-running its tests). It was not
@@ -41,7 +43,7 @@ forward:
 ## Partially completed
 
 **Item 2 — remaining-risk list.** The Chunk 1–3 notes already carry most of it
-(`docs/CHUNK1_NOTES.md` §4, `CHUNK2_NOTES.md` §4, `CHUNK3_NOTES.md` §8). It was
+(`docs/history/CHUNK1_NOTES.md` §4, `CHUNK2_NOTES.md` §4, `CHUNK3_NOTES.md` §8). It was
 never consolidated into one document. The reconstructed-code risk is recorded in
 `CHUNK1_NOTES.md` §1 and is restated in `CHUNK4_NOTES.md`.
 

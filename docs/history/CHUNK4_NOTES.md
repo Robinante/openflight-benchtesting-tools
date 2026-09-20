@@ -1,5 +1,7 @@
 # Chunk 4 -- raw-first analysis
 
+> Historical snapshot. For current setup and layout, see the [repository README](../../README.md).
+
 Built on Chunk 3. Capture/serial/UART/radar-control code untouched. No
 acquisition work. Separate copy; nothing written back to the original project.
 
@@ -97,9 +99,9 @@ sweep_summary.csv         1 row   IDENTICAL
 65 passed, 3 skipped, 31 subtests passed
 ```
 
-- `tests/test_chunk4_rawfirst.py` — **17 new**, covering all six requested
+- `tests/test_range_profiles.py` — **17 new**, covering all six requested
   categories. 10 run without any fixture (synthetic, exact arithmetic).
-- `tests/test_chunk3.py` (12), `test_capture_model.py` (11),
+- `tests/test_integrity_exports.py` (12), `test_capture_model.py` (11),
   `test_analysis_regression.py` (10) — unmodified, all pass.
 - `tests/test_openflight_bench.py`, `test_uart_reader.py` — the operator's own,
   untouched: 15 passed, 3 skipped, 31 subtests.
@@ -156,14 +158,14 @@ Copy in; nothing existing changes behavior.
 openflight_bench/analysis/          entire new subpackage
 analyzer_validation.py              NEW at repo root -- REQUIRED for analyze_material.py to import at all
 docs/CHUNK{1,2,3,4}_NOTES.md
-docs/RANGE_ANALYSIS_AUDIT.md
+docs/history/RANGE_ANALYSIS_AUDIT.md
 docs/ANALYSIS_METRICS.md
-docs/PREVIOUS_AUDIT_STATUS.md
+docs/history/PREVIOUS_AUDIT_STATUS.md
 docs/golden/                        reference CSVs
 tests/test_analysis_regression.py
 tests/test_capture_model.py
-tests/test_chunk3.py
-tests/test_chunk4_rawfirst.py
+tests/test_integrity_exports.py
+tests/test_range_profiles.py
 tests/FIXTURES.md
 legacy/                             frozen pre-refactor scripts (test-only)
 ```

@@ -9,8 +9,7 @@ workbench holds no analysis logic of its own: it picks files, calls the same
 functions the CLI calls, and renders what comes back. If a number here
 disagrees with the CSV, that is a bug in this file, not in the analysis.
 
-Offline only -- opening saved captures. Live acquisition is the Phase 1 chunk
-that still has to touch the radar, so the Capture page is not here yet.
+The interface opens saved captures. Live acquisition uses the capture CLI.
 """
 
 from __future__ import annotations
@@ -401,8 +400,8 @@ def main():
         help="Set BENCH_CAPTURE_DIR to change the default.")
     rb = _policy_controls()
     choice = st.sidebar.radio("Page", list(PAGES))
-    st.sidebar.caption("Offline analysis of saved captures. Live capture is not "
-                       "wired up yet -- that is the chunk that touches the radar.")
+    st.sidebar.caption("Offline analysis of saved captures. "
+                       "Use the capture CLI for live acquisition.")
     PAGES[choice](directory, rb)
 
 

@@ -1,5 +1,7 @@
 # Chunk 1 -- analysis consolidation
 
+> Historical snapshot. For current setup and layout, see the [repository README](../../README.md).
+
 **Revision 2 (2026-09-17)** -- re-homed `bench_analysis/` to
 `openflight_bench/analysis/` and renamed `MaterialResult` to
 `MaterialComparisonResult` to match the roadmap's Phase 1 result naming

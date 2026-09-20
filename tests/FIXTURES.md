@@ -1,23 +1,41 @@
-# Running the regression tests
+# Test fixtures
 
-The `.l3dump` capture fixtures are NOT in this archive (they are ~16 MB of
-binary that you already have). Point the tests at your own captures:
+The repository includes one real capture in `tests/fixtures/integrity_session`
+for hashing and integrity tests, plus a reference calibration JSON. The
+integrity fixture is deliberately partial: its original `SHA256SUMS` lists
+other captures that are not bundled, and a test checks that they are reported
+as missing.
 
-```bat
-set BENCH_MATERIAL_DIR=C:\Users\lazer\Documents\OpenFlight\BenchTesting\captures\material_session_20260906\2026-09-06
-set BENCH_SWEEP_DIR=C:\Users\lazer\Documents\OpenFlight\BenchTesting\captures\boresight_test1
-set BENCH_CALIBRATION=C:\Users\lazer\Documents\OpenFlight\BenchTesting\bench_calibration_reference.json
-python -m pytest tests\test_analysis_regression.py tests\test_capture_model.py -q
+The external material and sweep datasets used for full regression comparisons
+are not bundled. In PowerShell, point the tests at your matching datasets:
+
+```powershell
+$env:BENCH_MATERIAL_DIR = 'C:\path\to\material_session_20260906\2026-09-06'
+$env:BENCH_SWEEP_DIR = 'C:\path\to\boresight_test1'
+$env:BENCH_CALIBRATION = 'C:\path\to\bench_calibration_reference.json'
+python -m pytest -q -rs
 ```
 
-Any directory of `.l3dump` + `.json` pairs works. Without those variables the
-tests look in `tests/fixtures/{material_subset,sweep_subset}` and skip cleanly
-if nothing is there -- they will not fail just because the captures are absent.
+On Linux, set these with `export BENCH_MATERIAL_DIR=/path/to/session` and the
+corresponding variables. Run from an environment with `.[analysis,dev]` (or
+`.[workbench,dev]`) installed.
 
-`test_capture_model.py` (Chunk 2) covers the normalized Capture model and the
-range_bin_m precedence; it synthesizes its own modified sidecars in a tmpdir and
-never touches the fixture files.
+Without overrides, tests look in `tests/fixtures/material_subset` and
+`tests/fixtures/sweep_subset` and skip if no dumps are present. `BENCH_FIXTURES`
+can override the fixture root, including the integrity fixture location.
+Some tests assume the original material session's baseline/angle/calibration
+properties; an arbitrary capture directory is not an equivalent fixture.
+Three older transport tests additionally use optional files under `upload/`.
 
-What the regression tests compare: `legacy/analyze_{material,sweep}_original.py` (frozen,
-md5-identical copies of your scripts as they were) against the new
-`openflight_bench.analysis` package, over the same captures, field by field.
+| Test file | Coverage |
+| --- | --- |
+| `test_analysis_regression.py` | Shared analysis versus frozen scripts in `legacy/` |
+| `test_capture_model.py` | Normalized capture model and range-bin precedence |
+| `test_integrity_exports.py` | Integrity checks, progress, exports, and plots |
+| `test_range_profiles.py` | Full range profiles, gates, and metric arithmetic |
+| `test_openflight_bench.py`, `test_uart_reader.py` | Capture configuration and transport behavior |
+
+Tests that modify captures or sidecars use temporary directories. Keep the
+original capture files and frozen legacy scripts for repeatable comparisons.
+Use `-rs` to inspect every skip; a clean-clone pass does not mean the external
+dataset regression tests ran.

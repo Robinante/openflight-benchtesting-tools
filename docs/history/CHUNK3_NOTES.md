@@ -1,5 +1,7 @@
 # Chunk 3 -- integrity, presentation split, JSON export, plots, workbench
 
+> Historical snapshot. For current setup and layout, see the [repository README](../../README.md).
+
 Builds on Chunk 2. Capture/serial/UART/radar-control code is still untouched.
 Separate copy; nothing written back to the original project.
 
@@ -137,7 +139,7 @@ to touch the radar.
 48 passed, 3 skipped, 31 subtests passed
 ```
 
-`tests/test_chunk3.py` is new (12 tests): sha256 against the real sidecar
+`tests/test_integrity_exports.py` is new (12 tests): sha256 against the real sidecar
 format, `SHA256SUMS` fallback, bit-flip detection, "not recorded" handling,
 `verify_directory`, stdout silence under `progress=`, unchanged CLI printing,
 `as_progress` print-compatibility, the candidate table surviving a failed gate,

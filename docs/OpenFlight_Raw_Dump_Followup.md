@@ -41,7 +41,7 @@ The final four-chirp blocks correlate approximately 0.991–0.992 with the displ
 
 This is strong evidence of internal deletion, and explains artificial peaks in naive range profiles. It does **not** identify whether the loss originates in firmware UART output, the USB/serial path, a driver, or host capture handling. There is no end-to-end checksum to localize it. I did not reconstruct missing samples or accept realigned data for metrology.
 
-![Sample alignment and resulting false range peaks](OpenFlight_Raw_Dump_Integrity.png)
+*The original sample-alignment figure was not included in the repository.*
 
 `capture_benchtesting.py` describes a short payload as an otherwise complete capture with a short last frame. That statement is contradicted by these bytes. `analyze_material.py` then calls the first 24 nominal frames complete, even when many have already shifted. **Reject the entire file whenever actual and declared lengths differ.** An exact length remains a necessary check, not a checksum-backed guarantee.
 

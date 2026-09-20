@@ -26,3 +26,10 @@ captures/
 .DS_Store
 Thumbs.db
 !**/tests/fixtures/**/*.l3dump
+
+# Local assistant configuration and working files
+.agents/
+.claude/
+Archive/
+exports/
+*.wire.bin

@@ -1,5 +1,7 @@
 # Chunk 2 -- normalized capture model and result types
 
+> Historical snapshot. For current setup and layout, see the [repository README](../../README.md).
+
 Builds on Chunk 1 rev 2. Scope as agreed: **the Capture model plus normalized
 results**. Capture/serial/UART/radar-control code is still untouched, there is
 still no plotting layer, and Streamlit is still not started.

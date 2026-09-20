@@ -1,11 +1,12 @@
-# Radar Workbench
+# Radar Workbench interface
 
-```
-pip install streamlit matplotlib
-streamlit run workbench/app.py
-```
+Follow the [root quick start](../README.md#quick-start-analysis-on-windows), then
+use **Launch Radar Workbench.bat** in the repository root. Alternatively, from
+an activated environment at the root:
 
-or double-click `workbench/run_workbench.bat`.
+```bash
+python -m streamlit run workbench/app.py
+```
 
 Point the sidebar's **Capture folder** at any directory of `.l3dump` + `.json`
 pairs. A session folder with dated subdirectories works too -- it looks one
@@ -21,5 +22,5 @@ level down when the top level has no dumps.
 
 It holds no analysis logic. Every page calls the same
 `openflight_bench.analysis` functions the CLI calls, so a number shown here and
-a number in the CSV come from the same code path. Offline only: live capture is
-the remaining Phase 1 chunk, the one that has to touch the radar.
+a number in the CSV come from the same code path. The GUI analyzes saved captures. For live acquisition, use the
+[capture CLI](../docs/CAPTURE.md).
